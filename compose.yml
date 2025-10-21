@@ -1,0 +1,49 @@
+services:
+
+  komodo-mongo:
+    image: mongo:8.0.15
+    container_name: homelab-komodo-mongo
+    restart: unless-stopped
+    labels:
+      komodo.skip: # Prevent Komodo from stopping with StopAllContainers
+    command: --quiet --wiredTigerCacheSizeGB 0.25
+    volumes:
+      - ${STORAGE}/komodo/mongo-data:/data/db
+      - ${STORAGE}/komodo/mongo-config:/data/configdb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+
+  komodo-core:
+    image: ghcr.io/moghtech/komodo-core:1.19.5
+    container_name: homelab-komodo-core
+    # labels:
+    #   komodo.skip: # Prevent Komodo from stopping with StopAllContainers
+    restart: unless-stopped
+    depends_on:
+      - komodo-mongo
+    ports:
+      - 9120:9120
+    logging:
+      driver: local
+    environment:
+      KOMODO_DATABASE_ADDRESS: komodo-mongo:27017
+      KOMODO_DATABASE_USERNAME: admin
+      KOMODO_DATABASE_PASSWORD: admin
+      KOMODO_FIRST_SERVER: https://komodo-periphery:8120
+      KOMODO_LOCAL_AUTH: "true"
+    volumes:
+      - ${STORAGE}/komodo/repo-cache:/repo-cache
+
+  komodo-periphery:
+    image: ghcr.io/moghtech/komodo-periphery:1.19.5
+    container_name: homelab-komodo-periphery
+    labels:
+      komodo.skip: # Prevent Komodo from stopping with StopAllContainers
+    restart: unless-stopped
+    logging:
+      driver: local
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/proc
+      - /etc/komodo:/etc/komodo
